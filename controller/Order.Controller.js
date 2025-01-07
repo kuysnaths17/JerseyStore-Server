@@ -1,128 +1,99 @@
 // Order.controller.js
 const Order = require('../model/Order.model');
-const User = require('../model/user.model'); 
+const User = require('../model/user.model');
+const mongoose = require('mongoose');
 
 // Create a new order
 exports.createOrder = async (req, res) => {
-    try {
-      const { userId, items } = req.body;
-  
-      // Ensure userId is valid
-      const user = await User.findById(userId);
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-  
-      // Ensure that items is an array and not empty
-      if (!Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({ message: 'Items array is required and cannot be empty.' });
-      }
-  
-      // Calculate totalAmount and validate that price, quantity, and product details are correct
-      let totalAmount = 0;
-      for (const item of items) {
-        const { product, quantity } = item;
-  
-        // Ensure that product has the necessary fields and that quantity is a valid number
-        if (!product || typeof product.price !== 'number' || typeof quantity !== 'number') {
-          return res.status(400).json({ message: 'Each item must have valid product details and quantity as numbers.' });
-        }
-  
-        // Calculate the total price for the item
-        const totalItemPrice = product.price * quantity;
-        item.totalItemPrice = totalItemPrice;  // Add the total price per item to the item object
-  
-        // Add the item price to the totalAmount
-        totalAmount += totalItemPrice;
-      }
-  
-      // If totalAmount is still NaN or less than or equal to zero, return an error
-      if (isNaN(totalAmount) || totalAmount <= 0) {
-        return res.status(400).json({ message: 'Invalid total amount calculated.' });
-      }
-  
-      // Create and save the order
-      const order = new Order({
-        userId,  // Associate the order with the user
-        items,
-        totalAmount
-      });
-  
-      const savedOrder = await order.save();
-      res.status(201).json(savedOrder);  // Respond with the created order
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Error creating order', error: error.message });
+  try {
+    const { userId, name, size, category, price, quantity } = req.body;
+
+    // Ensure userId is valid
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
-  };
+
+    // Ensure that the item fields are valid
+    if (!name || !size || !category || !price || !quantity) {
+      return res.status(400).json({ message: 'Name, size, category, price, and quantity are required.' });
+    }
+
+    // Ensure that price and quantity are valid numbers
+    if (typeof price !== 'number' || typeof quantity !== 'number') {
+      return res.status(400).json({ message: 'Price and quantity must be valid numbers.' });
+    }
+
+    // Calculate the total price for the order
+    const totalAmount = price * quantity;
+
+    // If totalAmount is invalid, return an error
+    if (isNaN(totalAmount) || totalAmount <= 0) {
+      return res.status(400).json({ message: 'Invalid total amount calculated.' });
+    }
+
+    // Create the order object
+    const order = new Order({
+      userId, // Associate the order with the user
+      name,
+      size,
+      category,
+      price,
+      quantity,
+      totalAmount,
+      status: 'pending',
+      email: user.email
+    });
+
+    // Save the order to the database
+    const savedOrder = await order.save();
+
+    res.status(201).json(savedOrder); // Respond with the created order
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error creating order', error: error.message });
+  }
+};
+
+
+
 
 // Get all orders
 exports.getAllOrders = async (req, res) => {
-  try {
-    const orders = await Order.find()
-      .populate('userId', 'email')  // Populate email from the User model
-      .populate('items.productId', 'name size category')  // Populate product details
-      .exec();  // Execute the query
-
-    res.status(200).json(orders);
-  } catch (error) {
-    console.error('Error fetching orders:', error);
-    res.status(500).json({ message: 'Error fetching orders', error: error.message });
-  }
-};
-
-// Get order by ID
-exports.getOrderById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const order = await Order.findById(id)
-      .populate('userId', 'email')  // Populate email from the User model
-      .populate('items.productId', 'name size category')  // Populate product details
-      .exec();  // Execute the query
-
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+    try {
+      const { email } = req.query;
+  
+      if (email) {
+        console.log('Querying orders for email:', email); // Log the email being queried
+  
+        const orders = await Order.find({ 'userId.email': email }) // Query by email in userId
+          .populate('userId', 'username email') // Populate userId with username and email
+          .lean(); // Returns plain JavaScript objects, no need for .map()
+  
+        if (orders.length === 0) {
+          return res.status(404).json({
+            status: 'error',
+            message: 'No orders found for this email',
+          });
+        }
+  
+        return res.status(200).json({
+          status: 'success',
+          data: orders,
+        });
+      }
+  
+      const orders = await Order.find().populate('userId', 'username email').lean();
+      res.status(200).json({
+        status: 'success',
+        data: orders,
+      });
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      res.status(500).json({
+        status: 'error',
+        message: 'Failed to fetch orders',
+        error: error.message,
+      });
     }
-
-    res.status(200).json(order);
-  } catch (error) {
-    console.error('Error fetching order:', error);
-    res.status(500).json({ message: 'Error fetching order', error: error.message });
-  }
-};
-
-exports.updateOrderStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;  // Assume a "status" field exists in the Order schema
-
-    const order = await Order.findByIdAndUpdate(id, { status }, { new: true });
-
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
-
-    res.status(200).json(order);
-  } catch (error) {
-    console.error('Error updating order status:', error);
-    res.status(500).json({ message: 'Error updating order status', error: error.message });
-  }
-};
-
-// Delete an order
-exports.deleteOrder = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const order = await Order.findByIdAndDelete(id);
-
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
-
-    res.status(200).json({ message: 'Order deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting order:', error);
-    res.status(500).json({ message: 'Error deleting order', error: error.message });
-  }
-};
+  };
