@@ -13,6 +13,9 @@ const logoSchema = new mongoose.Schema({
   logoUrl: { type: String },
   notes: { type: String },
   approval: { type: Boolean, default: false },
+  deliveryOption: { type: String, default: "Pickup" }
+},{
+  timestamps: true,
 });
 
 const Logo = mongoose.model('Logo', logoSchema);

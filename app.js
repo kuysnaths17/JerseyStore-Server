@@ -7,6 +7,7 @@ const productRoutes = require('./route/productRoutes.js');
 const OrderRoutes = require('./route/OrderRoutes.js');
 const addtocart = require('./route/addtocartRoutes.js');
 const addlogo = require('./route/LogoRoutes.js');
+const reset = require('./route/authRoutes.js')
 
 const app = express();
 connectDB();
@@ -14,7 +15,7 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
-app.use('/web', userRoutes, productRoutes, OrderRoutes, addtocart, addlogo);
+app.use('/web', userRoutes, productRoutes, OrderRoutes, addtocart, addlogo, reset);
 
 const PORT = process.env.MONGODB_PORT || 3000;
 app.listen(PORT, () => {

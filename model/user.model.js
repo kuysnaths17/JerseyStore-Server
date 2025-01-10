@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    gender:{
+    gender: {
         type: String,
         required: true
     },
@@ -21,8 +21,14 @@ const userSchema = new mongoose.Schema({
     password: {
         type: String,
         required: true
+    },
+    resetToken: { // Add resetToken field
+        type: String
+    },
+    resetTokenExpiry: { // Add resetTokenExpiry field
+        type: Date
     }
-}, {timestamps: true})
+}, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
 module.exports = User;

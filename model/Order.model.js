@@ -36,9 +36,21 @@ const orderSchema = new mongoose.Schema({
     default: 'pending',
   },
   email: {
+    type: String,
+    required: true,
+  },
+  deliveryOption: {
     type: String, 
     required: true,
-  }
+    default:'Door2Door',
+  },
+  address: {
+    city: { type: String, required: false },
+    brgy: { type: String, required: false },
+    blk: { type: String, required: false },
+    lot: { type: String, required: false },
+    province: { type: String, required: false },
+  },
 }, { timestamps: true });
 
 const Order = mongoose.model('Order', orderSchema);
